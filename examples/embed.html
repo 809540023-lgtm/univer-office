@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>嵌入範例 — 把 Univer Office 放進內部網站</title>
+    <style>
+      body { margin: 0; font-family: -apple-system, "Noto Sans TC", Arial, sans-serif; background: #eef1f5; color: #1f2328; }
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+      h1 { font-size: 18px; }
+      .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+      button { border: 1px solid #cbd2da; background: #fff; border-radius: 7px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+      textarea { width: 100%; height: 130px; font: 12px/1.5 ui-monospace, monospace; border: 1px solid #cbd2da; border-radius: 8px; padding: 8px; }
+      iframe { width: 100%; height: 620px; border: 1px solid #cbd2da; border-radius: 10px; background: #fff; }
+      .hint { font-size: 12px; color: #5b6470; }
+      code { background: #fff; padding: 1px 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>嵌入範例：內部網站 ↔ Univer Office</h1>
+      <p class="hint">
+        下方 iframe 預設指向 <code>http://localhost:5178/?embed=1&amp;parentOrigin=&lt;本頁 origin&gt;</code>，
+        可用 <code>?src=</code> 換成實際部署網址。外層用 <code>postMessage</code> 取回／寫入內容：
+        <code>getData</code>、<code>setData</code>、<code>setMode</code>。
+      </p>
+
+      <div class="bar">
+        <button id="getSheets">取得試算表 JSON</button>
+        <button id="getDocs">取得文檔 JSON</button>
+        <button id="push">把下方 JSON 寫進編輯器</button>
+        <button id="toSheets">切到試算表</button>
+        <button id="toDocs">切到文檔</button>
+      </div>
+
+      <iframe id="office" title="Univer Office"></iframe>
+
+      <p class="hint">訊息記錄（「取得…」會把快照放進來，可直接編輯後按「把下方 JSON 寫進編輯器」）：</p>
+      <textarea id="log" spellcheck="false"></textarea>
+    </div>
+
+    <script>
+      const IFRAME_SRC = new URLSearchParams(location.search).get("src") || "http://localhost:5178";
+      const iframe = document.getElementById("office");
+      const log = document.getElementById("log");
+      let current = "sheets";
+
+      // 告訴編輯器只把訊息發給本頁（未帶此參數時它會用 "*"）
+      iframe.src = `${IFRAME_SRC}/?embed=1&mode=${current}&parentOrigin=${encodeURIComponent(location.origin)}`;
+
+      const lines = [];
+      function record(text) {
+        lines.unshift(`[${new Date().toLocaleTimeString()}] ${text}`);
+        log.value = lines.slice(0, 40).join("\n");
+      }
+
+      iframe.addEventListener("load", () => record("iframe 已載入"));
+
+      // 編輯器 → 外層
+      window.addEventListener("message", (event) => {
+        if (event.source !== iframe.contentWindow) return;
+        const msg = event.data;
+        if (!msg || msg.source !== "univer-office") return;
+
+        if (msg.type === "data") {
+          log.value = JSON.stringify(msg.data, null, 2);
+          record(`收到 ${msg.mode} 的快照（requestId=${msg.requestId ?? "-"}）`);
+          return;
+        }
+        if (msg.type === "saved") {
+          record(`使用者按下儲存（${msg.mode}），快照已附在訊息中`);
+          return;
+        }
+        if (msg.type === "changed") record(`內容已變更（${msg.mode}）`);
+        else if (msg.type === "ready") record(`編輯器就緒：${msg.mode}`);
+        else if (msg.type === "mode") record(`模式切換為 ${msg.mode}`);
+        else if (msg.type === "error") record(`⚠️ ${msg.message}`);
+      });
+
+      function ask(mode) {
+        const requestId = Math.random().toString(36).slice(2, 8);
+        iframe.contentWindow.postMessage({ type: "getData", mode, requestId }, "*");
+        record(`要求 ${mode} 快照…`);
+      }
+
+      document.getElementById("getSheets").onclick = () => ask("sheets");
+      document.getElementById("getDocs").onclick = () => ask("docs");
+      document.getElementById("toSheets").onclick = () => {
+        current = "sheets";
+        iframe.contentWindow.postMessage({ type: "setMode", mode: current }, "*");
+      };
+      document.getElementById("toDocs").onclick = () => {
+        current = "docs";
+        iframe.contentWindow.postMessage({ type: "setMode", mode: current }, "*");
+      };
+      document.getElementById("push").onclick = () => {
+        try {
+          const data = JSON.parse(log.value);
+          iframe.contentWindow.postMessage({ type: "setData", mode: current, data }, "*");
+          record(`已把 JSON 寫入 ${current}`);
+        } catch (error) {
+          record(`JSON 解析失敗：${error.message}`);
+        }
+      };
+    </script>
+  </body>
+</html>
