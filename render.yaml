@@ -1,0 +1,22 @@
+# Render 部署設定（Static Site）。
+#
+# 這份檔案是部署設定的紀錄，讓環境可以重建：
+#   Dashboard → New → Blueprint → 選這個 repo，即可依此設定建立服務。
+# 目前的服務是用 Render API 建立的獨立 Static Site，兩者設定一致：
+#   https://dashboard.render.com/static/srv-daukbem0tbcc73bkjd80
+#   https://univer-office.onrender.com
+#
+# 注意：Vite 產出的靜態檔不含伺服器端邏輯，所以是 Static Site，
+# 不需要 Web Service；`dist/` 就是發佈目錄。
+services:
+  - type: web
+    name: univer-office
+    runtime: static
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      # Vite 8 需要 Node ^20.19 或 >=22.12；.node-version 也有一份，兩處都寫避免漂移
+      - key: NODE_VERSION
+        value: 22.12.0

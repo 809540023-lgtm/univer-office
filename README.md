@@ -3,6 +3,20 @@
 內部網站用的**試算表／文檔編輯器**，以 [Univer](https://github.com/dream-num/univer) Office SDK（Apache-2.0）為引擎。
 可獨立開啟，也可用 **iframe 嵌入**任何現有內部網站，透過 `postMessage` 收送內容。
 
+## 線上網址（已部署）
+
+| 位置 | 網址 |
+|---|---|
+| 編輯器（Render Static Site） | **https://univer-office.onrender.com** |
+| 原始碼（GitHub，private） | https://github.com/809540023-lgtm/univer-office |
+| Render 服務 | https://dashboard.render.com/static/srv-daukbem0tbcc73bkjd80 |
+
+- 推送 `main` 會自動重新部署（`autoDeploy: true`）。
+- 直接開上面網址即可使用；要嵌入內部網站請看下面的「用法二」，只要把 `src` 換成這個網址。
+- 部署設定見 `render.yaml`（Static Site，`npm ci && npm run build` → 發佈 `dist/`）。
+
+## 功能
+
 - 兩種編輯器：**試算表**（公式、格式、多工作表）與**文檔**（富文字、段落樣式）
 - 介面與內建工具列都是**繁體中文**
 - 內容會**自動存檔到瀏覽器 localStorage**（重整不會不見），並可下載／載入 JSON
@@ -40,7 +54,7 @@ npm run preview    # 用 dist 起本機伺服器驗證
 ```html
 <iframe
   id="office"
-  src="https://univer-office.example/?embed=1&mode=sheets&parentOrigin=https%3A%2F%2Fintranet.example"
+  src="https://univer-office.onrender.com/?embed=1&mode=sheets&parentOrigin=https%3A%2F%2Fintranet.example"
   style="width:100%;height:640px;border:0"
 ></iframe>
 
@@ -135,7 +149,12 @@ examples/embed.html    嵌入與 postMessage 範例
 | `npm run build` | 型別檢查 + 建置到 `dist/` |
 | `npm run preview` | 用 `dist/` 起本機伺服器 |
 | `npm run lint` | oxlint |
-| `npm run smoke` | 煙霧測試（需先 `npm run preview`） |
+| `npm run smoke` | 煙霧測試（需先 `npm run preview`，或直接給線上網址） |
+
+```bash
+npm run smoke                                        # 打 http://localhost:5178
+npm run smoke -- https://univer-office.onrender.com    # 打線上環境
+```
 
 煙霧測試會用真實瀏覽器確認：兩個編輯器畫布真的渲染、輸入後會自動存檔、`embed=1` 正常、**主控台沒有錯誤**。
 這不是多餘的 —— 開發時就踩過一次：worker 用 Vite 的 `?url` 匯入會拿到含 `import` 的 ESM 檔，
